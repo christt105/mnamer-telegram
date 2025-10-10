@@ -1,34 +1,30 @@
 ﻿using System.Text.RegularExpressions;
 using Bot.Handlers;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Bot.CallbackQueries.Callbacks;
 
 [Callback(Id)]
-public class MoveFileCallback : ICallbackQuery
+public class AcceptMoveFileCallback : ICallbackQuery
 {
-    public const string Id = "move";
+    public const string Id = "accept_move";
     private readonly WTelegram.Bot _bot;
     private readonly DirectoryHandler _directoryHandler;
-    private readonly string _guid;
     private readonly MnamerHandler _mnamer;
     private readonly PendingFilesHandler _pendingFilesHandler;
 
-    private MoveFileCallback(string guid,
-        PendingFilesHandler pendingFilesHandler,
-        MnamerHandler mnamerHandler,
-        WTelegram.Bot bot,
-        DirectoryHandler directoryHandler)
+    private readonly string _guid;
+
+
+    private AcceptMoveFileCallback(string guid, PendingFilesHandler pendingFilesHandler, MnamerHandler mnamer,
+        WTelegram.Bot bot, DirectoryHandler dispatcherDirectoryHandler)
     {
         _guid = guid;
         _pendingFilesHandler = pendingFilesHandler;
-        _mnamer = mnamerHandler;
+        _mnamer = mnamer;
         _bot = bot;
-        _directoryHandler = directoryHandler;
+        _directoryHandler = dispatcherDirectoryHandler;
     }
-
 
     public async Task ExecuteAsync(Message? message)
     {
@@ -42,7 +38,7 @@ public class MoveFileCallback : ICallbackQuery
         }
 
         var arguments =
-            $"--test --batch --no-style --language {_mnamer.Language} --movie-directory \"{_mnamer.MovieDirectoryFormat}\" --movie-format \"{_mnamer.MovieFormat}\" --episode-directory \"{_mnamer.EpisodeDirectoryFormat}\" --episode-format \"{_mnamer.EpisodeFormat}\" --episode-api tvdb \"{_directoryHandler.WatchDirectory}/{file}\"";
+            $"--batch --no-style --language {_mnamer.Language} --movie-directory \"{_mnamer.MovieDirectoryFormat}\" --movie-format \"{_mnamer.MovieFormat}\" --episode-directory \"{_mnamer.EpisodeDirectoryFormat}\" --episode-format \"{_mnamer.EpisodeFormat}\" --episode-api tvdb \"{_directoryHandler.WatchDirectory}/{file}\"";
 
         var result = await _mnamer.ExecuteMnamer(arguments);
 
@@ -54,29 +50,22 @@ public class MoveFileCallback : ICallbackQuery
             return;
         }
 
-        var lastPart = match.Groups[1].Value;
+        if (result.Contains("OK!"))
+        {
+            await _bot.EditMessageText(message.Chat.Id, message.Id, $"File {file} moved to `{match.Groups[1].Value}`");
+            _pendingFilesHandler.UnregisterFile(_guid);
+        }
 
-        var text = @$"The file {file} will be moved to: 
-
-`{lastPart}`.
-
-Do you want to continue?";
-
-        await _bot.EditMessageText(message.Chat.Id, message.Id, text, ParseMode.MarkdownV2,
-            linkPreviewOptions: new LinkPreviewOptions { ShowAboveText = true },
-            replyMarkup: new[]
-            {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Move", AcceptMoveFileCallback.Pack(_guid))
-                }
-            });
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
         var guid = fields[0];
-        return new MoveFileCallback(guid, dispatcher.PendingFilesHandler, dispatcher.MnamerHandler, dispatcher.Bot,
+        return new AcceptMoveFileCallback(
+            guid,
+            dispatcher.PendingFilesHandler,
+            dispatcher.MnamerHandler,
+            dispatcher.Bot,
             dispatcher.DirectoryHandler);
     }
 
