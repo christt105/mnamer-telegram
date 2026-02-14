@@ -17,7 +17,7 @@ public class CommandHandler
         var commands = new ICommand[]
         {
             new StartCommand(bot.Bot),
-            new SearchCommand(bot.Bot, bot.PendingFilesHandler, bot.MnamerHandler),
+            new SearchCommand(bot.NewFileHandler, bot.DirectoryHandler),
             new CheckConfigCommand(bot.Bot, bot.DirectoryHandler, bot.MnamerHandler)
         };
 

@@ -1,4 +1,5 @@
 ﻿using Bot.Handlers;
+using Bot.Utils;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using Message = WTelegram.Types.Message;
@@ -8,21 +9,25 @@ namespace Bot;
 
 public class BotDispatcher
 {
-    private readonly int _allowedUser;
     private readonly CallbackQueryHandler _callbackQueryHandler;
     private readonly CommandHandler _commandHandler;
 
     private readonly MessageHandler _messageHandler;
+    
+    public int AllowedUser { get; }
+    
+    public NewFileHandler NewFileHandler { get; }
 
     public BotDispatcher(WTelegram.Bot bot, TaskQueue queue)
     {
         Bot = bot;
         Queue = queue;
 
-        _allowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
+        AllowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
 
         DirectoryHandler = new DirectoryHandler();
         MnamerHandler = new MnamerHandler(DirectoryHandler);
+        NewFileHandler = new NewFileHandler(MnamerHandler, bot, PendingFilesHandler, AllowedUser);
         
         _commandHandler = new CommandHandler(this);
         _messageHandler = new MessageHandler(Bot);
@@ -47,7 +52,7 @@ public class BotDispatcher
 
         await Bot.DropPendingUpdates();
 
-        await Bot.SendMessage(_allowedUser, "Bot started");
+        await Bot.SendMessage(AllowedUser, "Bot started");
 
         Bot.OnMessage += HandleMessage;
         Bot.OnUpdate += HandleUpdate;
@@ -58,7 +63,7 @@ public class BotDispatcher
 
     public async Task HandleMessage(Message msg, UpdateType type)
     {
-        if (msg.From == null || msg.From.Id != _allowedUser)
+        if (msg.From == null || msg.From.Id != AllowedUser)
         {
             Log.Info($"User {msg.From?.Username} with ID({msg.From?.Id}) is not allowed.");
             return;
@@ -88,7 +93,7 @@ public class BotDispatcher
 
                 var callback = update.CallbackQuery;
 
-                if (callback.From == null || callback.From.Id != _allowedUser)
+                if (callback.From == null || callback.From.Id != AllowedUser)
                 {
                     Log.Info($"User {callback.From?.Username} with ID({callback.From?.Id}) is not allowed.");
                     return;

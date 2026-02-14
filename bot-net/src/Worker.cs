@@ -5,6 +5,7 @@ namespace Bot;
 public class Worker : BackgroundService
 {
     private readonly TaskQueue _queue = new();
+    private FileWatcherService _fileWatcher;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -21,6 +22,9 @@ public class Worker : BackgroundService
             var botDispatcher = new BotDispatcher(bot, _queue);
 
             await botDispatcher.InitBot();
+            
+            _fileWatcher = new FileWatcherService(botDispatcher);
+            await _fileWatcher.ExecuteAsync(stoppingToken);
 
             _ = _queue.StartProcessing(stoppingToken);
 

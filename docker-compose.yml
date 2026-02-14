@@ -8,4 +8,5 @@ services:
     env_file:
       - .env
     volumes:
-      - C:\Users\chris\Desktop\Projects\mnamer-telegram\appdata/:/data
+      # - C:\Users\chris\Desktop\Projects\mnamer-telegram\appdata/:/data
+      - /mnt/disco:/data
