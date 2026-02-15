@@ -7,6 +7,12 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Bot.Utils;
 
+public enum MediaType
+{
+    Movie,
+    Episode
+}
+
 public class NewFileHandler
 {
     public static readonly string[] VideoExtensions =
@@ -16,6 +22,9 @@ public class NewFileHandler
     private readonly int _chatId;
     private readonly MnamerHandler _mnamer;
     private readonly PendingFilesHandler _pendingFilesHandler;
+    
+    // Store message ID -> (FilePath, DetectType)
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (string FilePath, MediaType Type)> _awaitingReply = new();
 
     public NewFileHandler(MnamerHandler mnamer, WTelegram.Bot bot, PendingFilesHandler pendingFilesHandler, int chatId)
     {
@@ -27,12 +36,26 @@ public class NewFileHandler
 
     public async Task<bool> HandleFile(string file)
     {
+        return await HandleFile(file, null, null);
+    }
+
+    public async Task<bool> HandleFile(string file, string? forcedId, MediaType? forcedType)
+    {
         const string movieFormat = "MOVIE__SEP__{id_tmdb}__SEP__{name}__SEP__{year}";
         const string showFormat =
             "SHOW__SEP__{id_tvdb}__SEP__{series}__SEP__{season}__SEP__{episode}__SEP__{title}__SEP__{date}";
 
         var arguments =
-            $"--test --batch --no-style --language {_mnamer.Language} --movie-format \"{movieFormat}\" --episode-format \"{showFormat}\" --episode-api tvdb \"{file}\"";
+            $"--test --batch --no-style --language {_mnamer.Language} --movie-format \"{movieFormat}\" --episode-format \"{showFormat}\" --movie-api tmdb --episode-api tvdb \"{file}\"";
+
+        if (forcedId != null && forcedType != null)
+        {
+            if (forcedType == MediaType.Movie)
+                arguments += $" --id-tmdb {forcedId}";
+            else
+                arguments += $" --id-tvdb {forcedId}";
+        }
+
         var output = await _mnamer.ExecuteMnamer(arguments);
 
         var match = Regex.Match(output, "moving to .+/(.+)$", RegexOptions.Multiline);
@@ -60,20 +83,25 @@ public class NewFileHandler
             message = lastPart.StartsWith("MOVIE")
                 ? $"Movie not found for file `{file}`."
                 : $"Episode not found for file `{file}`.";
-            await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2);
+            var sent = await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2);
+             _awaitingReply.TryAdd(sent.Id, (file, lastPart.StartsWith("MOVIE") ? MediaType.Movie : MediaType.Episode));
         }
         else
         {
-            await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2,
+            var fileGuid = _pendingFilesHandler.RegisterFile(file, forcedId, forcedType);
+            
+            var sent = await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2,
                 linkPreviewOptions: new LinkPreviewOptions { ShowAboveText = true },
                 replyMarkup: new[]
                 {
                     new[]
                     {
                         InlineKeyboardButton.WithCallbackData("Move",
-                            MoveFileCallback.Pack(_pendingFilesHandler.RegisterFile(fileName)))
+                            MoveFileCallback.Pack(fileGuid))
                     }
                 });
+            
+            _awaitingReply.TryAdd(sent.Id, (file, lastPart.StartsWith("MOVIE") ? MediaType.Movie : MediaType.Episode));
         }
 
         return false;
@@ -136,5 +164,49 @@ public class NewFileHandler
     public void Clear()
     {
         _pendingFilesHandler.Clear();
+        _awaitingReply.Clear();
+    }
+
+    public async Task HandleReply(int replyToMsgId, string text)
+    {
+        if (!_awaitingReply.TryGetValue(replyToMsgId, out var data))
+            return;
+
+        var (filePath, mediaType) = data;
+        string? forcedId = null;
+        MediaType? forcedType = null;
+
+        // Check for prefixes
+        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1)
+        {
+            var prefix = parts[0].ToLowerInvariant();
+            var id = parts[1];
+
+            if (prefix == "tmdb" || prefix == "movie")
+            {
+                forcedType = MediaType.Movie;
+                forcedId = id;
+            }
+            else if (prefix == "tvdb" || prefix == "show" || prefix == "series")
+            {
+                forcedType = MediaType.Episode;
+                forcedId = id;
+            }
+        }
+        
+        if (forcedId == null)
+        {
+            // Assume it's just the ID, use stored type
+            forcedId = text.Trim();
+            forcedType = mediaType;
+        }
+
+        Log.Info($"Reprying file {filePath} with ID {forcedId} and Type {forcedType}");
+        await _bot.SendMessage(_chatId, $"Retrying with ID {forcedId}...", replyParameters: new ReplyParameters { MessageId = replyToMsgId });
+        
+        _awaitingReply.TryRemove(replyToMsgId, out _);
+
+        await HandleFile(filePath, forcedId, forcedType);
     }
 }

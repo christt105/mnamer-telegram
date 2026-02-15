@@ -30,7 +30,7 @@ public class BotDispatcher
         NewFileHandler = new NewFileHandler(MnamerHandler, bot, PendingFilesHandler, AllowedUser);
         
         _commandHandler = new CommandHandler(this);
-        _messageHandler = new MessageHandler(Bot);
+        _messageHandler = new MessageHandler(this);
         _callbackQueryHandler = new CallbackQueryHandler(this);
         PendingActionHandler = new PendingActionHandler(Bot);
     }

@@ -2,6 +2,8 @@
 using Bot.Handlers;
 using Telegram.Bot.Types;
 
+using Telegram.Bot.Types;
+using Bot.Utils;
 namespace Bot.CallbackQueries.Callbacks;
 
 [Callback(Id)]
@@ -28,17 +30,27 @@ public class AcceptMoveFileCallback : ICallbackQuery
 
     public async Task ExecuteAsync(Message? message)
     {
-        var file = _pendingFilesHandler.GetFile(_guid);
+        var fileData = _pendingFilesHandler.GetFile(_guid);
 
-        if (file == null)
+        if (fileData == null)
         {
             Log.Error($"File with guid {_guid} not found.");
             //TODO: if not found, try to get the file from inside the message text
             return;
         }
 
+        var (file, forcedId, forcedType) = fileData.Value;
+
         var arguments =
-            $"--batch --no-style --language {_mnamer.Language} --movie-directory \"{_mnamer.MovieDirectoryFormat}\" --movie-format \"{_mnamer.MovieFormat}\" --episode-directory \"{_mnamer.EpisodeDirectoryFormat}\" --episode-format \"{_mnamer.EpisodeFormat}\" --episode-api tvdb \"{_directoryHandler.WatchDirectory}/{file}\"";
+            $"--batch --no-style --language {_mnamer.Language} --movie-directory \"{_mnamer.MovieDirectoryFormat}\" --movie-format \"{_mnamer.MovieFormat}\" --episode-directory \"{_mnamer.EpisodeDirectoryFormat}\" --episode-format \"{_mnamer.EpisodeFormat}\" --movie-api tmdb --episode-api tvdb \"{file}\"";
+
+        if (forcedId != null && forcedType != null)
+        {
+            if (forcedType == MediaType.Movie)
+                arguments += $" --id-tmdb {forcedId}";
+            else
+                arguments += $" --id-tvdb {forcedId}";
+        }
 
         var result = await _mnamer.ExecuteMnamer(arguments);
 

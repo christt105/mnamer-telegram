@@ -6,15 +6,18 @@ namespace Bot.Handlers;
 
 public class MessageHandler
 {
-    private readonly WTelegram.Bot _bot;
+    private readonly BotDispatcher _botDispatcher;
 
-    public MessageHandler(WTelegram.Bot bot)
+    public MessageHandler(BotDispatcher botDispatcher)
     {
-        _bot = bot;
+        _botDispatcher = botDispatcher;
     }
 
-    public Task Handle(Message msg, UpdateType type)
+    public async Task Handle(Message msg, UpdateType type)
     {
-        return Task.CompletedTask;
+        if (msg.ReplyToMessage != null)
+        {
+            await _botDispatcher.NewFileHandler.HandleReply(msg.ReplyToMessage.Id, msg.Text);
+        }
     }
 }
