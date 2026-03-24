@@ -9,4 +9,5 @@ services:
       - .env
     user: "${PUID:-1000}:${PGID:-1000}"
     volumes:
-      - /mnt/disco:/data
+      - ./appdata:/data
+      - /mnt/disco:/media
