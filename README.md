@@ -12,11 +12,6 @@ A Telegram bot to automate the organization of your media library using the powe
     - Receive notifications when files are processed.
     - **Approve Moves**: One-click confirmation to move files.
     - **Manual Correction**: Reply with `tmdb <id>` or `tvdb <id>` if the detection is wrong.
-- **📦 Batch Processing**:
-    - Use `/batch` to scan your watch folder for all pending files.
-    - Group files by their destination (e.g., "Season 1", "Movie Collection").
-    - **Accept All**: Process all valid groups with a single click.
-    - **Links**: Direct links to TMDB/TVDB to verify matches.
 
 ![Screenshot Batch](./docs/ExampleRename.png)
 
