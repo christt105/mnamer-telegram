@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Bot.Utils;
+using Telegram.Bot.Extensions;
 
 namespace Bot.CallbackQueries.Callbacks;
 
@@ -67,9 +68,11 @@ public class MoveFileCallback : ICallbackQuery
 
         var lastPart = match.Groups[1].Value;
 
-        var text = @$"The file {file} will be moved to: 
+        var fileExists = File.Exists(lastPart);
 
-`{lastPart}`.
+        var text = @$"The file `{Markdown.Escape(file)}` will be moved to: 
+
+`{Markdown.Escape(lastPart)}`.{(fileExists ? "\n\n⚠️ File already exists! It will be overwritten." : "")}
 
 Do you want to continue?";
 

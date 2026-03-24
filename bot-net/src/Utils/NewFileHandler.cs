@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Bot.CallbackQueries.Callbacks;
 using Bot.Handlers;
+using Telegram.Bot.Extensions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -22,7 +23,7 @@ public class NewFileHandler
     private readonly int _chatId;
     private readonly MnamerHandler _mnamer;
     private readonly PendingFilesHandler _pendingFilesHandler;
-    
+
     // Store message ID -> (FilePath, DetectType)
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (string FilePath, MediaType Type)> _awaitingReply = new();
 
@@ -61,8 +62,8 @@ public class NewFileHandler
         var match = Regex.Match(output, "moving to .+/(.+)$", RegexOptions.Multiline);
         if (!match.Success)
         {
-            Log.Error($"\"moving to\" was not found. File: {file}. Output: {output}");
-            await _bot.SendMessage(_chatId, $"Couldn't find movie with path {file}.");
+            Log.Error($"\"moving to\" was not found. File: {Markdown.Escape(file)}. Output: {output}");
+            await _bot.SendMessage(_chatId, $"Couldn't find movie with path {Markdown.Escape(file)}.");
             return true;
         }
 
@@ -81,15 +82,15 @@ public class NewFileHandler
         if (string.IsNullOrEmpty(message))
         {
             message = lastPart.StartsWith("MOVIE")
-                ? $"Movie not found for file `{file}`."
-                : $"Episode not found for file `{file}`.";
+                ? $"Movie not found for file `{Markdown.Escape(file)}`."
+                : $"Episode not found for file `{Markdown.Escape(file)}`.";
             var sent = await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2);
-             _awaitingReply.TryAdd(sent.Id, (file, lastPart.StartsWith("MOVIE") ? MediaType.Movie : MediaType.Episode));
+            _awaitingReply.TryAdd(sent.Id, (file, lastPart.StartsWith("MOVIE") ? MediaType.Movie : MediaType.Episode));
         }
         else
         {
             var fileGuid = _pendingFilesHandler.RegisterFile(file, forcedId, forcedType);
-            
+
             var sent = await _bot.SendMessage(_chatId, message, ParseMode.MarkdownV2,
                 linkPreviewOptions: new LinkPreviewOptions { ShowAboveText = true },
                 replyMarkup: new[]
@@ -100,7 +101,7 @@ public class NewFileHandler
                             MoveFileCallback.Pack(fileGuid))
                     }
                 });
-            
+
             _awaitingReply.TryAdd(sent.Id, (file, lastPart.StartsWith("MOVIE") ? MediaType.Movie : MediaType.Episode));
         }
 
@@ -119,7 +120,7 @@ public class NewFileHandler
         return string.IsNullOrEmpty(tmdbId)
             ? null
             : $"""
-               New {Icons.MovieIcon}Movie found '{file}'
+               New {Icons.MovieIcon}Movie found `{Markdown.Escape(file)}`
 
                Name: {name}
                Year: {year}
@@ -148,12 +149,12 @@ public class NewFileHandler
         return string.IsNullOrEmpty(tvdbId)
             ? null
             : $"""
-               New {Icons.TvIcon}Episode found '{file}'
+               New {Icons.TvIcon}Episode found `{Markdown.Escape(file)}`
 
-               Series: {series}
+               Series: {Markdown.Escape(series)}
                Season: {season}
                Episode: {episode}
-               Title: {title}
+               Title: {Markdown.Escape(title)}
                Release Date: {date}
                TVDB: [{tvdbId}](https://www.thetvdb.com/search?query={tvdbId})
 
@@ -194,7 +195,7 @@ public class NewFileHandler
                 forcedId = id;
             }
         }
-        
+
         if (forcedId == null)
         {
             // Assume it's just the ID, use stored type
@@ -204,7 +205,7 @@ public class NewFileHandler
 
         Log.Info($"Reprying file {filePath} with ID {forcedId} and Type {forcedType}");
         await _bot.SendMessage(_chatId, $"Retrying with ID {forcedId}...", replyParameters: new ReplyParameters { MessageId = replyToMsgId });
-        
+
         _awaitingReply.TryRemove(replyToMsgId, out _);
 
         await HandleFile(filePath, forcedId, forcedType);

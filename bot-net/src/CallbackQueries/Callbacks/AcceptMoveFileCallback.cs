@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 
 using Telegram.Bot.Types;
 using Bot.Utils;
+using Telegram.Bot.Extensions;
 namespace Bot.CallbackQueries.Callbacks;
 
 [Callback(Id)]
@@ -58,13 +59,13 @@ public class AcceptMoveFileCallback : ICallbackQuery
         if (!match.Success)
         {
             Log.Error($"\"moving to\" was not found. File: {file}. Output: {result}");
-            await _bot.SendMessage(message.Chat.Id, $"Couldn't find movie with path {file}.");
+            await _bot.SendMessage(message.Chat.Id, $"Couldn't find movie with path {Markdown.Escape(file)}.");
             return;
         }
 
         if (result.Contains("OK!"))
         {
-            await _bot.EditMessageText(message.Chat.Id, message.Id, $"File {file} moved to `{match.Groups[1].Value}`");
+            await _bot.EditMessageText(message.Chat.Id, message.Id, $"File `{Markdown.Escape(file)}` moved to `{Markdown.Escape(match.Groups[1].Value)}`", Telegram.Bot.Types.Enums.ParseMode.MarkdownV2);
             _pendingFilesHandler.UnregisterFile(_guid);
         }
 
