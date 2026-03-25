@@ -12,9 +12,9 @@ A Telegram bot to automate the organization of your media library using the powe
 
 ## Features
 
-- **📂 Watch Folder Monitoring**: Automatically detects new video files in your configured download directory.
-- **🤖 Automatic Organization**: Uses `mnamer` to rename and move files to your library (Movies/TV Shows).
-- **💬 Interactive Telegram Interface**: 
+- **Watch Folder Monitoring**: Automatically detects new video files in your configured download directory.
+- **Automatic Organization**: Uses `mnamer` to rename and move files to your library (Movies/TV Shows).
+- **Interactive Telegram Interface**: 
     - Receive notifications when files are processed.
     - **Approve Moves**: One-click confirmation to move files.
     - **Manual Correction**: Reply with `tmdb <id>` or `tvdb <id>` if the detection is wrong.
@@ -46,29 +46,33 @@ To get your `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`:
 ### Configuration
 
 1.  **Clone the repository**.
-2.  **Create a `.env` file** in the root directory (you can copy `.env.example` as a starting point):
-    ```env
-    TELEGRAM_API_ID=your_api_id
-    TELEGRAM_API_HASH=your_api_hash
-    TELEGRAM_BOT_TOKEN=your_bot_token
-    TELEGRAM_AUTH_USER_ID=your_user_id
-    
-    # Paths inside the container (Verify these match your volume mappings)
-    # Recommended: Use a single volume for atomic moves (instant & no copy)
-    WATCH_DIR=/media/downloads
-    MOVIES_DIR=/media/movies
-    SHOWS_DIR=/media/shows
-    ```
+2.  **Create a `.env` file** in the root directory (you can copy [`.env.example`](.env.example) as a starting point):
+
+## Environment Variables
+
+| Variable | Description | Default value |
+|---|---|---|
+| TELEGRAM_API_ID | Telegram API ID | n/a |
+| TELEGRAM_API_HASH | Telegram API Hash | n/a |
+| TELEGRAM_BOT_TOKEN | Bot token | n/a |
+| TELEGRAM_AUTH_USER_ID | Authorized user ID | n/a |
+| WATCH_DIR | Watch folder for scanning | `/data/watch` (in code) |
+| MOVIES_DIR | Movies output folder | `/data/movies` (in code) |
+| SHOWS_DIR | Shows output folder | `/data/shows` (in code) |
+| MOVIE_FORMAT | Movie filename format string for mnamer | `{name} ({year}){extension}` |
+| EPISODES_FORMAT | Episode filename format string for mnamer | `{series} S{season:02}E{episode:02}{extension}` |
+| MOVIE_DIRECTORY | Movie output directory template | `${dirHandler.MoviesDirectory}/{name} ({year}) [tmdbid-{id_tmdb}]` |
+| EPISODE_DIRECTORY | Episode output directory template | `${dirHandler.ShowsDirectory}/{series} [tvdbid-{id_tvdb}]/Season {season:02}` |
+| LANGUAGE | mnamer/movie language code | `en` 
+
 3.  **Review `docker-compose.yml`** (an example file is included in the repository):
     
-    > **Performance Tip**: Map a single volume (e.g., `/mnt/data:/media`) containing both your downloads and library folders. This allows the bot to "move" files instantly (atomic move) instead of copying them between drives.
+    > **Performance Tip**: Map a single volume (e.g., `/mnt/data:/media`) containing both your downloads and library folders. This allows the bot to move files atomically (without copying) when directories are on the same volume.
 
     ```yaml
     services:
       bot-mnamer:
-        build:
-          context: ./bot-net
-          dockerfile: Dockerfile
+        image: christt105/mnamer-telegram:latest
         restart: unless-stopped
         env_file: .env
         volumes:
@@ -82,22 +86,31 @@ To get your `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`:
 Start the bot container:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 View logs:
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ## ⚠️ Known Limitations & Docker Compatibility
 
 The real-time folder monitoring (`FileSystemWatcher`) is primarily designed and tested for **Linux hosts**.
 
-If you are running Docker on **Windows or macOS**, file system events from the host might not propagate to the container due to how Docker handles volume mounts (gRPC FUSE/VirtioFS). In these environments, the bot may not detect new files automatically.
-- **Workaround**: Use the `/search` command to trigger a manual scan of the watch folder.
-- **Technical Details**: Read more about [File System Watch issues on Docker mounts](https://forums.docker.com/t/file-system-watch-does-not-work-with-mounted-volumes/12038/18).
+If you are running Docker on **Windows or macOS**, host file events may not propagate correctly into the container. Use the `/search` command to scan manually, or check this link for more information:
+
+- [File System Watch issues on Docker mounts (Docker Forums)](https://forums.docker.com/t/file-system-watch-does-not-work-with-mounted-volumes/12038/18)
+
+
+## mnamer formatting
+
+`mnamer-telegram` uses mnamer format strings for `MOVIE_FORMAT`, `EPISODES_FORMAT`, `MOVIE_DIRECTORY`, and `EPISODE_DIRECTORY`. You can customize these values in your `.env` file.
+
+For format details and examples, see:
+
+- https://github.com/jkwill87/mnamer/wiki/Formatting
 
 ## Usage
 

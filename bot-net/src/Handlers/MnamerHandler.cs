@@ -17,7 +17,7 @@ public class MnamerHandler
         MovieFormat = Environment.GetEnvironmentVariable("MOVIE_FORMAT") ??
                       "{name} ({year}){extension}";
         EpisodeFormat = Environment.GetEnvironmentVariable("EPISODES_FORMAT") ??
-                        "{series} S{season:02}E{episode:02}.{extension}";
+                        "{series} S{season:02}E{episode:02}{extension}";
 
         MovieDirectoryFormat = Environment.GetEnvironmentVariable("MOVIE_DIRECTORY") ??
                          $"{dirHandler.MoviesDirectory}/{{name}} ({{year}}) [tmdbid-{{id_tmdb}}]";

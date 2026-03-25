@@ -1,8 +1,6 @@
 services:
   bot-mnamer:
-    build:
-      context: ./bot-net
-      dockerfile: Dockerfile
+    image: christt105/mnamer-telegram:latest
     container_name: bot-mnamer
     restart: unless-stopped
     env_file:
