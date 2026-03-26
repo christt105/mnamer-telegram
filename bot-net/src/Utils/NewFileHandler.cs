@@ -20,14 +20,14 @@ public class NewFileHandler
         { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm" };
 
     private readonly WTelegram.Bot _bot;
-    private readonly int _chatId;
+    private readonly long _chatId;
     private readonly MnamerHandler _mnamer;
     private readonly PendingFilesHandler _pendingFilesHandler;
 
     // Store message ID -> (FilePath, DetectType)
     private readonly System.Collections.Concurrent.ConcurrentDictionary<int, (string FilePath, MediaType Type)> _awaitingReply = new();
 
-    public NewFileHandler(MnamerHandler mnamer, WTelegram.Bot bot, PendingFilesHandler pendingFilesHandler, int chatId)
+    public NewFileHandler(MnamerHandler mnamer, WTelegram.Bot bot, PendingFilesHandler pendingFilesHandler, long chatId)
     {
         _mnamer = mnamer;
         _bot = bot;
