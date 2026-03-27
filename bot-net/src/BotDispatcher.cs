@@ -1,6 +1,7 @@
 ﻿using Bot.Handlers;
 using Bot.Utils;
 using Telegram.Bot.Polling;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Message = WTelegram.Types.Message;
 using Update = WTelegram.Types.Update;
@@ -14,7 +15,7 @@ public class BotDispatcher
 
     private readonly MessageHandler _messageHandler;
     
-    public int AllowedUser { get; }
+    public ChatId AllowedUser { get; }
     
     public NewFileHandler NewFileHandler { get; }
 
@@ -23,7 +24,7 @@ public class BotDispatcher
         Bot = bot;
         Queue = queue;
 
-        AllowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
+        AllowedUser = Convert.ToInt64(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
 
         DirectoryHandler = new DirectoryHandler();
         MnamerHandler = new MnamerHandler(DirectoryHandler);
